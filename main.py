@@ -308,3 +308,99 @@ def load_pickles():
     if df is None or "title" not in df.columns:
         raise RuntimeError("df.pkl must contain a DataFrame with a 'title' column")
 
+# =========================
+# ROUTES
+# =========================
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+# ---------- HOME FEED (TMDB) ----------
+@app.get("/home", response_model=List[TMDBMovieCard])
+async def home(
+    category: str = Query("popular"),
+    limit: int = Query(24, ge=1, le=50),
+):
+    """
+    Home feed for Streamlit (posters).
+    category:
+      - trending (trending/movie/day)
+      - popular, top_rated, upcoming, now_playing  (movie/{category})
+    """
+    try:
+        if category == "trending":
+            data = await tmdb_get("/trending/movie/day", {"language": "en-US"})
+            return await tmdb_cards_from_results(data.get("results", []), limit=limit)
+
+        if category not in {"popular", "top_rated", "upcoming", "now_playing"}:
+            raise HTTPException(status_code=400, detail="Invalid category")
+
+        data = await tmdb_get(f"/movie/{category}", {"language": "en-US", "page": 1})
+        return await tmdb_cards_from_results(data.get("results", []), limit=limit)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Home route failed: {e}")
+
+
+# ---------- TMDB KEYWORD SEARCH (MULTIPLE RESULTS) ----------
+@app.get("/tmdb/search")
+async def tmdb_search(
+    query: str = Query(..., min_length=1),
+    page: int = Query(1, ge=1, le=10),
+):
+    """
+    Returns RAW TMDB shape with 'results' list.
+    Streamlit will use it for:
+      - dropdown suggestions
+      - grid results
+    """
+    return await tmdb_search_movies(query=query, page=page)
+
+
+# ---------- MOVIE DETAILS (SAFE ROUTE) ----------
+@app.get("/movie/id/{tmdb_id}", response_model=TMDBMovieDetails)
+async def movie_details_route(tmdb_id: int):
+    return await tmdb_movie_details(tmdb_id)
+
+
+# ---------- GENRE RECOMMENDATIONS ----------
+@app.get("/recommend/genre", response_model=List[TMDBMovieCard])
+async def recommend_genre(
+    tmdb_id: int = Query(...),
+    limit: int = Query(18, ge=1, le=50),
+):
+    """
+    Given a TMDB movie ID:
+    - fetch details
+    - pick first genre
+    - discover movies in that genre (popular)
+    """
+    details = await tmdb_movie_details(tmdb_id)
+    if not details.genres:
+        return []
+
+    genre_id = details.genres[0]["id"]
+    discover = await tmdb_get(
+        "/discover/movie",
+        {
+            "with_genres": genre_id,
+            "language": "en-US",
+            "sort_by": "popularity.desc",
+            "page": 1,
+        },
+    )
+    cards = await tmdb_cards_from_results(discover.get("results", []), limit=limit)
+    return [c for c in cards if c.tmdb_id != tmdb_id]
+
+
+# ---------- TF-IDF ONLY (debug/useful) ----------
+@app.get("/recommend/tfidf")
+async def recommend_tfidf(
+    title: str = Query(..., min_length=1),
+    top_n: int = Query(10, ge=1, le=50),
+):
+    recs = tfidf_recommend_titles(title, top_n=top_n)
+    return [{"title": t, "score": s} for t, s in recs]

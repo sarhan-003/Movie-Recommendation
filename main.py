@@ -105,3 +105,27 @@ def make_img_url(path: Optional[str]) -> Optional[str]:
     return f"{TMDB_IMG_500}{path}"
 
 
+async def tmdb_get(path: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Safe TMDB GET:
+    - Network errors -> 502
+    - TMDB API errors -> 502 with detail
+    """
+    q = dict(params)
+    q["api_key"] = TMDB_API_KEY
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.get(f"{TMDB_BASE}{path}", params=q)
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"TMDB request error: {type(e).__name__} | {repr(e)}",
+        )
+
+    if r.status_code != 200:
+        raise HTTPException(
+            status_code=502, detail=f"TMDB error {r.status_code}: {r.text}"
+        )
+
+    return r.json()

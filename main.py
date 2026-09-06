@@ -20,4 +20,21 @@ TMDB_BASE = "https://api.themoviedb.org/3"
 TMDB_IMG_500 = "https://image.tmdb.org/t/p/w500"
 
 
+if not TMDB_API_KEY:
+    # Don't crash import-time in production if you prefer; but for you better fail early:
+    raise RuntimeError("TMDB_API_KEY missing. Put it in .env as TMDB_API_KEY=xxxx")
+
+# =========================
+# FASTAPI APP
+# =========================
+app = FastAPI(title="Movie Recommender API", version="3.0")
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # for local streamlit
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 

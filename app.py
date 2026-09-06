@@ -1,10 +1,12 @@
+import os
+
 import requests
 import streamlit as st
 
 # =============================
 # CONFIG
 # =============================
-API_BASE = "https://movie-rec-466x.onrender.com" or "http://127.0.0.1:8000"
+API_BASE = os.getenv("API_BASE", "https://movie-recommendation-jv54.onrender.com")
 TMDB_IMG = "https://image.tmdb.org/t/p/w500"
 
 st.set_page_config(page_title="Movie Recommender", page_icon="🎬", layout="wide")
@@ -65,13 +67,22 @@ def goto_details(tmdb_id: int):
 # =============================
 @st.cache_data(ttl=30)  # short cache for autocomplete
 def api_get_json(path: str, params: dict | None = None):
-    try:
-        r = requests.get(f"{API_BASE}{path}", params=params, timeout=25)
-        if r.status_code >= 400:
-            return None, f"HTTP {r.status_code}: {r.text[:300]}"
-        return r.json(), None
-    except Exception as e:
-        return None, f"Request failed: {e}"
+    # Render free-tier services spin down when idle and take ~30-50s to wake
+    # back up on the next request, so the first call after a lull needs a
+    # long timeout plus a couple of retries instead of failing immediately.
+    last_error = None
+    for attempt, timeout in enumerate((15, 45, 45)):
+        try:
+            r = requests.get(f"{API_BASE}{path}", params=params, timeout=timeout)
+            if r.status_code >= 400:
+                last_error = f"HTTP {r.status_code}: {r.text[:300]}"
+                if r.status_code != 503:
+                    return None, last_error
+                continue
+            return r.json(), None
+        except requests.exceptions.RequestException as e:
+            last_error = f"Request failed: {e}"
+    return None, last_error
 
 
 def poster_grid(cards, cols=6, key_prefix="grid"):

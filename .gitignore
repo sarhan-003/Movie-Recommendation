@@ -9,3 +9,8 @@ env/
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
+
+# Raw source dataset - not used at runtime, only in movies.ipynb during
+# model building. The trained artifacts (df.pkl, indices.pkl, tfidf*.pkl)
+# are what the API actually loads.
+movies_metadata.csv

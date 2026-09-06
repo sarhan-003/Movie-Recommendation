@@ -33,7 +33,7 @@ app = FastAPI(title="Movie Recommender API", version="3.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # for local streamlit
-    allow_credentials=True,
+    allow_credentials=False,  # "*" origins + credentials is an invalid combo
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -311,6 +311,16 @@ def load_pickles():
 # =========================
 # ROUTES
 # =========================
+@app.get("/")
+def root():
+    return {
+        "name": "Movie Recommender API",
+        "version": app.version,
+        "docs": "/docs",
+        "health": "/health",
+    }
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}

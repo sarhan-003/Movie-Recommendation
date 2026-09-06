@@ -145,3 +145,15 @@ async def tmdb_cards_from_results(
             )
         )
     return out
+
+async def tmdb_movie_details(movie_id: int) -> TMDBMovieDetails:
+    data = await tmdb_get(f"/movie/{movie_id}", {"language": "en-US"})
+    return TMDBMovieDetails(
+        tmdb_id=int(data["id"]),
+        title=data.get("title") or "",
+        overview=data.get("overview"),
+        release_date=data.get("release_date"),
+        poster_url=make_img_url(data.get("poster_path")),
+        backdrop_url=make_img_url(data.get("backdrop_path")),
+        genres=data.get("genres", []) or [],
+    )

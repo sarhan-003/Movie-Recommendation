@@ -157,3 +157,24 @@ async def tmdb_movie_details(movie_id: int) -> TMDBMovieDetails:
         backdrop_url=make_img_url(data.get("backdrop_path")),
         genres=data.get("genres", []) or [],
     )
+
+async def tmdb_search_movies(query: str, page: int = 1) -> Dict[str, Any]:
+    """
+    Raw TMDB response for keyword search (MULTIPLE results).
+    Streamlit will use this for suggestions and grid.
+    """
+    return await tmdb_get(
+        "/search/movie",
+        {
+            "query": query,
+            "include_adult": "false",
+            "language": "en-US",
+            "page": page,
+        },
+    )
+
+
+async def tmdb_search_first(query: str) -> Optional[dict]:
+    data = await tmdb_search_movies(query=query, page=1)
+    results = data.get("results", [])
+    return results[0] if results else None

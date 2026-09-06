@@ -85,9 +85,9 @@ def api_get_json(path: str, params: dict | None = None):
     return None, last_error
 
 
-def poster_grid(cards, cols=6, key_prefix="grid"):
+def poster_grid(cards, cols=6, key_prefix="grid", empty_message="No movies to show."):
     if not cards:
-        st.info("No movies to show.")
+        st.info(empty_message)
         return
 
     rows = (len(cards) + cols - 1) // cols
@@ -362,6 +362,11 @@ elif st.session_state.view == "details":
                 to_cards_from_tfidf_items(bundle.get("tfidf_recommendations")),
                 cols=grid_cols,
                 key_prefix="details_tfidf",
+                empty_message=(
+                    "No TF-IDF match — this title isn't in our local recommendation "
+                    "dataset (it only covers older/classic movies). See Genre "
+                    "recommendations below instead."
+                ),
             )
 
             st.markdown("#### 🎭 More Like This (Genre)")

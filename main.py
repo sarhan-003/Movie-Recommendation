@@ -129,3 +129,19 @@ async def tmdb_get(path: str, params: Dict[str, Any]) -> Dict[str, Any]:
         )
 
     return r.json()
+
+async def tmdb_cards_from_results(
+    results: List[dict], limit: int = 20
+) -> List[TMDBMovieCard]:
+    out: List[TMDBMovieCard] = []
+    for m in (results or [])[:limit]:
+        out.append(
+            TMDBMovieCard(
+                tmdb_id=int(m["id"]),
+                title=m.get("title") or m.get("name") or "",
+                poster_url=make_img_url(m.get("poster_path")),
+                release_date=m.get("release_date"),
+                vote_average=m.get("vote_average"),
+            )
+        )
+    return out

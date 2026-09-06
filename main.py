@@ -178,3 +178,101 @@ async def tmdb_search_first(query: str) -> Optional[dict]:
     data = await tmdb_search_movies(query=query, page=1)
     results = data.get("results", [])
     return results[0] if results else None
+
+
+
+
+# =========================
+# TF-IDF Helpers
+# =========================
+def build_title_to_idx_map(indices: Any) -> Dict[str, int]:
+    """
+    indices.pkl can be:
+    - dict(title -> index)
+    - pandas Series (index=title, value=index)
+    We normalize into TITLE_TO_IDX.
+    """
+    title_to_idx: Dict[str, int] = {}
+
+    if isinstance(indices, dict):
+        for k, v in indices.items():
+            title_to_idx[_norm_title(k)] = int(v)
+        return title_to_idx
+
+    # pandas Series or similar mapping
+    try:
+        for k, v in indices.items():
+            title_to_idx[_norm_title(k)] = int(v)
+        return title_to_idx
+    except Exception:
+        # last resort: if it's a list-like etc.
+        raise RuntimeError(
+            "indices.pkl must be dict or pandas Series-like (with .items())"
+        )
+
+
+def get_local_idx_by_title(title: str) -> int:
+    global TITLE_TO_IDX
+    if TITLE_TO_IDX is None:
+        raise HTTPException(status_code=500, detail="TF-IDF index map not initialized")
+    key = _norm_title(title)
+    if key in TITLE_TO_IDX:
+        return int(TITLE_TO_IDX[key])
+    raise HTTPException(
+        status_code=404, detail=f"Title not found in local dataset: '{title}'"
+    )
+
+
+def tfidf_recommend_titles(
+    query_title: str, top_n: int = 10
+) -> List[Tuple[str, float]]:
+    """
+    Returns list of (title, score) from local df using cosine similarity on TF-IDF matrix.
+    Safe against missing columns/rows.
+    """
+    global df, tfidf_matrix
+    if df is None or tfidf_matrix is None:
+        raise HTTPException(status_code=500, detail="TF-IDF resources not loaded")
+
+    idx = get_local_idx_by_title(query_title)
+
+    # query vector
+    qv = tfidf_matrix[idx]
+    scores = (tfidf_matrix @ qv.T).toarray().ravel()
+
+    # sort descending
+    order = np.argsort(-scores)
+
+    out: List[Tuple[str, float]] = []
+    for i in order:
+        if int(i) == int(idx):
+            continue
+        try:
+            title_i = str(df.iloc[int(i)]["title"])
+        except Exception:
+            continue
+        out.append((title_i, float(scores[int(i)])))
+        if len(out) >= top_n:
+            break
+    return out
+
+
+async def attach_tmdb_card_by_title(title: str) -> Optional[TMDBMovieCard]:
+    """
+    Uses TMDB search by title to fetch poster for a local title.
+    If not found, returns None (never crashes the endpoint).
+    """
+    try:
+        m = await tmdb_search_first(title)
+        if not m:
+            return None
+        return TMDBMovieCard(
+            tmdb_id=int(m["id"]),
+            title=m.get("title") or title,
+            poster_url=make_img_url(m.get("poster_path")),
+            release_date=m.get("release_date"),
+            vote_average=m.get("vote_average"),
+        )
+    except Exception:
+        return None
+

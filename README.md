@@ -763,3 +763,4 @@ If you find this project useful:
 **Python • FastAPI • Streamlit • Scikit-learn • Pandas • NumPy • SciPy • TF-IDF • TMDB API**
 
 > Turning movie data into personalized recommendations. 🍿🎬
+> Still Under Deployment 

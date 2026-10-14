@@ -133,6 +133,7 @@ For a selected movie:
 6. Sort movies by similarity.
 7. Return the highest-ranked movies.
 8. Return most view and rank movies.
+9. Removing git ignore
 The implementation calculates similarity through the TF-IDF matrix and ranks the resulting scores in descending order.
 
 ---

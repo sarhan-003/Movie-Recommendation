@@ -70,6 +70,7 @@ TMDB is used for:
 * Ratings
 * Posters
 * Backdrop images
+* Movie Rating Feature 
 
 The backend reads the TMDB API key from the environment using `TMDB_API_KEY`.
 

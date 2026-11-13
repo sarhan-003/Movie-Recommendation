@@ -24,7 +24,7 @@ The application combines:
 * 🖼️ Movie posters and backdrops
 * ⚡ FastAPI REST backend
 * 🖥️ Streamlit interactive frontend
-* Improving the prediction
+
 
 The recommendation engine uses a pre-trained **TF-IDF matrix** and cosine-similarity-style vector multiplication to identify movies that are most similar to the selected movie.
 
